@@ -464,6 +464,24 @@ if (things.has(SYSTEM_THING_ID)) {
                             const css = document.getElementById('css-editor').value;
                             const js = document.getElementById('js-editor').value;
 
+                            // Process CSS to scope all selectors
+                            const scopedCss = css.replace(
+                                /(^|})([^{]+){/g, 
+                                (match, g1, g2) => {
+                                    // Split multiple selectors
+                                    const selectors = g2.split(',').map(selector => {
+                                        selector = selector.trim();
+                                        // Handle body selector specially
+                                        if (selector === 'body') {
+                                            return '#preview-container .preview-content';
+                                        }
+                                        // Scope other selectors
+                                        return \`#preview-container .preview-content \${selector}\`;
+                                    });
+                                    return g1 + selectors.join(',') + '{';
+                                }
+                            );
+
                             // Create a scoped container for the preview
                             previewContainer.innerHTML = \`
                                 <style>
@@ -476,14 +494,13 @@ if (things.has(SYSTEM_THING_ID)) {
                                         background: white;
                                     }
                                     
-                                    /* Scope all styles to preview container */
                                     #preview-container .preview-content {
                                         min-height: 100%;
                                         display: block;
                                     }
 
-                                    /* Replace body with .preview-content */
-                                    \${css.replace(/body/g, '#preview-container .preview-content')}
+                                    /* Scoped styles */
+                                    \${scopedCss}
                                 </style>
                                 <div class="preview-content">
                                     \${html}
