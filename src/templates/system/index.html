@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Thing System</title>
+  <style></style>
+  <!-- CodeMirror CSS -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/theme/monokai.min.css">
+</head>
+
+<body>
+  <div id="thing-system-app">
+    <div class="thing-system-header">
+      <h1>Thing System</h1>
+    </div>
+    <div class="thing-system-controls">
+      <select id="thing-selector">
+        <option value="">Select a Thing</option>
+        <option value="new">+ Create New Thing</option>
+      </select>
+      <div class="thing-system-version-controls">
+        <span id="current-version"></span>
+        <select id="version-selector" style="display: none">
+          <option value="">Restore Version</option>
+        </select>
+      </div>
+    </div>
+    <div class="thing-system-workspace">
+      <div class="thing-system-editor-panel">
+        <div id="editor"></div>
+      </div>
+      <div class="thing-system-preview-panel">
+        <div class="thing-system-preview-header">
+          <h3>Live Preview</h3>
+        </div>
+        <div id="preview-container"></div>
+      </div>
+    </div>
+  </div>
+  <script>
+    window.SYSTEM_THING_ID = '${SYSTEM_THING_ID}';
+  </script>
+  <!-- CodeMirror JS -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/xml/xml.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/javascript/javascript.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/css/css.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/htmlmixed/htmlmixed.min.js"></script>
+  <script src="/thing-system.js"></script>
+</body>
+
+</html>

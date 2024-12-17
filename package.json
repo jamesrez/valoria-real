@@ -1,18 +1,21 @@
 {
   "name": "valoria-real",
   "version": "1.0.0",
-  "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node src/bootstrap.js"
+    "start": "cross-env NODEMON_RESTART=true nodemon --legacy-watch src/bootstrap.js --watch src/templates --watch src/storage/system-thing.json",
+    "dev": "cross-env NODEMON_RESTART=true nodemon --legacy-watch src/bootstrap.js --watch src/templates --watch src/storage/system-thing.json"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
     "express": "^4.21.2",
-    "uuid": "^11.0.3"
+    "uuid": "^11.0.3",
+    "chokidar": "^3.5.3"
   },
-  "devDependencies": {},
+  "devDependencies": {
+    "cross-env": "^7.0.3",
+    "nodemon": "^3.0.2"
+  },
   "description": ""
 }
