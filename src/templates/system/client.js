@@ -160,7 +160,11 @@ class ThingEditor {
       );
 
       ['html', 'css', 'js'].forEach(type => {
-          this.editors[type].on('change', () => this.updatePreview());
+          this.editors[type].on('change', () => {
+              (async () => {
+                  await this.updatePreview();
+              })();
+          });
       });
   }
 
@@ -191,7 +195,7 @@ class ThingEditor {
           'Current: v' + this.currentThing.version;
 
       this.updateVersionSelector(this.currentThing);
-      this.updatePreview();
+      await this.updatePreview();
   }
 
   async createNewThing() {
@@ -233,16 +237,19 @@ class ThingEditor {
           'Current: v' + updatedThing.version;
       
       this.updateVersionSelector(updatedThing);
-      alert('Thing saved!');
       
-      if (this.currentThing.id === window.SYSTEM_THING_ID) {
+      // If this is a child of the system Thing, reload the page
+      if (this.currentThing.parentId === window.SYSTEM_THING_ID || 
+          this.currentThing.id === window.SYSTEM_THING_ID) {
           location.reload();
-      } else {
-          this.currentThing = updatedThing;
+          return;
       }
+      
+      this.currentThing = updatedThing;
+      await this.updatePreview();
   }
 
-  updatePreview() {
+  async updatePreview() {
       if (!this.currentThing) return;
       
       const previewContainer = document.getElementById('preview-container');
@@ -252,33 +259,59 @@ class ThingEditor {
       const css = this.editors.css.getValue();
       const js = this.editors.js.getValue();
 
+      // Special handling for system Thing
       if (this.currentThing.id === window.SYSTEM_THING_ID) {
-          previewContainer.innerHTML = 
-              '<style>' +
-              '.preview-content { transform: scale(0.7); transform-origin: top left; }' +
-              css +
-              '</style>' +
-              '<div class="preview-content">' + html + '</div>';
+          // Get all Things for system preview
+          const response = await fetch('/api/things');
+          const things = await response.json();
+          
+          const childrenContent = await this.renderChildrenPreview();
+          
+          // Create a unique container ID for the system Thing
+          const systemContainerId = `system-preview-${Math.random().toString(36).substr(2, 9)}`;
+          
+          previewContainer.innerHTML = `
+              <style>
+                  #${systemContainerId} {
+                      ${css}
+                  }
+              </style>
+              <div id="${systemContainerId}" class="preview-content">
+                  ${html.replace(
+                      '<div class="children"></div>',
+                      `<div class="children">${childrenContent}</div>`
+                  )}
+              </div>
+          `;
+
+          // Execute system JS in a separate script tag
+          const scriptElement = document.createElement('script');
+          scriptElement.textContent = `
+              (function() {
+                  try {
+                      ${js}
+                  } catch (e) {
+                      console.error("System Preview JS Error:", e);
+                  }
+              })();
+          `;
+          previewContainer.appendChild(scriptElement);
           return;
       }
 
+      // For regular Things
+      const childrenContent = await this.renderChildrenPreview();
+      
       previewContainer.innerHTML = 
           '<style>' +
-          '#preview-container { ' +
-              'padding: 20px; ' +
-              'height: 100%; ' +
-              'display: flex; ' +
-              'flex-direction: column; ' +
-          '}' +
-          '.preview-content { ' +
-              'flex: 1; ' +
-              'display: flex; ' +
-              'flex-direction: column; ' +
-              'min-height: 100%; ' +
-          '}' +
           '.preview-content { ' + css + ' }' +
           '</style>' +
-          '<div class="preview-content">' + html + '</div>' +
+          '<div class="preview-content">' + 
+          html.replace(
+              '<div class="children"></div>', 
+              `<div class="children">${childrenContent}</div>`
+          ) + 
+          '</div>' +
           '<script>' +
           '(function() {' +
               'try {' +
@@ -288,6 +321,110 @@ class ThingEditor {
               '}' +
           '})();' +
           '</script>';
+  }
+
+  async renderChildrenPreview() {
+      if (!this.currentThing || !this.currentThing.children) return '';
+      
+      // Get all Things at once to avoid multiple fetches
+      const response = await fetch('/api/things');
+      const allThings = await response.json();
+      
+      // Sort children by order if available
+      const sortedChildren = [...this.currentThing.children].sort((a, b) => {
+          const thingA = allThings.find(t => t.id === a);
+          const thingB = allThings.find(t => t.id === b);
+          return (thingA?.order || 0) - (thingB?.order || 0);
+      });
+      
+      // Map and render all children
+      const childrenHtml = await Promise.all(
+          sortedChildren.map(async childId => {
+              const childThing = allThings.find(t => t.id === childId);
+              if (!childThing) return '';
+              
+              // Create a unique ID for this instance
+              const instanceId = `thing-${childId}-${Math.random().toString(36).substr(2, 9)}`;
+              
+              // Recursively render child's children
+              const nestedChildren = await this.renderChildrenRecursive(childThing, allThings);
+              
+              return `
+                  <style>
+                      /* Scope styles to this instance */
+                      #${instanceId} {
+                          ${childThing.components.css}
+                      }
+                  </style>
+                  <div id="${instanceId}" class="child-thing" data-thing-id="${childId}">
+                      ${childThing.components.html.replace(
+                          '<div class="children"></div>',
+                          `<div class="children">${nestedChildren}</div>`
+                      )}
+                  </div>
+                  <script>
+                      (function() {
+                          try {
+                              ${childThing.components.clientJs}
+                          } catch (e) {
+                              console.error("Error in child Thing JS:", e);
+                          }
+                      })();
+                  </script>
+              `;
+          })
+      );
+      
+      return childrenHtml.join('\n');
+  }
+
+  async renderChildrenRecursive(thing, allThings) {
+      if (!thing.children || !thing.children.length) return '';
+      
+      // Sort children by order if available
+      const sortedChildren = [...thing.children].sort((a, b) => {
+          const thingA = allThings.find(t => t.id === a);
+          const thingB = allThings.find(t => t.id === b);
+          return (thingA?.order || 0) - (thingB?.order || 0);
+      });
+      
+      const childrenHtml = await Promise.all(
+          sortedChildren.map(async childId => {
+              const childThing = allThings.find(t => t.id === childId);
+              if (!childThing) return '';
+              
+              // Create a unique ID for this instance
+              const instanceId = `thing-${childId}-${Math.random().toString(36).substr(2, 9)}`;
+              
+              const nestedChildren = await this.renderChildrenRecursive(childThing, allThings);
+              
+              return `
+                  <style>
+                      /* Scope styles to this instance */
+                      #${instanceId} {
+                          ${childThing.components.css}
+                      }
+                  </style>
+                  <div id="${instanceId}" class="child-thing" data-thing-id="${childId}">
+                      ${childThing.components.html.replace(
+                          '<div class="children"></div>',
+                          `<div class="children">${nestedChildren}</div>`
+                      )}
+                  </div>
+                  <script>
+                      (function() {
+                          try {
+                              ${childThing.components.clientJs}
+                          } catch (e) {
+                              console.error("Error in child Thing JS:", e);
+                          }
+                      })();
+                  </script>
+              `;
+          })
+      );
+      
+      return childrenHtml.join('\n');
   }
 
   updateVersionSelector(thing) {

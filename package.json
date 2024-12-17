@@ -2,8 +2,8 @@
   "name": "valoria-real",
   "version": "1.0.0",
   "scripts": {
-    "start": "cross-env NODEMON_RESTART=true nodemon --legacy-watch src/bootstrap.js --watch src/templates --watch src/storage/system-thing.json",
-    "dev": "cross-env NODEMON_RESTART=true nodemon --legacy-watch src/bootstrap.js --watch src/templates --watch src/storage/system-thing.json"
+    "start": "nodemon --legacy-watch src/bootstrap.js --watch src/templates",
+    "dev": "nodemon --legacy-watch src/bootstrap.js --watch src/templates"
   },
   "keywords": [],
   "author": "",
